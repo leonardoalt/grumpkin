@@ -20,42 +20,84 @@ use halo2curves::{
 
 new_curve_impl!(
     (pub),
-    G1,
-    G1Affine,
-    G1Compressed,
+    Grumpkin,
+    GrumpkinAffine,
+    GrumpkinCompressed,
     Fq,
     Fr,
-    (G1_GENERATOR_X,G1_GENERATOR_Y),
-    G1_B,
-    "grumpkin_g1",
+    (GRUMPKIN_GENERATOR_X,GRUMPKIN_GENERATOR_Y),
+    GRUMPKIN_B,
+    "grumpkin",
 );
 
-impl G1 {
+new_curve_impl!(
+    (pub),
+    BN256,
+    BN256Affine,
+    BN256Compressed,
+    Fr,
+    Fq,
+    (BN256_GENERATOR_X,BN256_GENERATOR_Y),
+    BN256_B,
+    "bn256",
+);
+
+impl Grumpkin {
     fn endomorphism_base(&self) -> Self {
         unimplemented!();
     }
 }
 
-impl CurveAffineExt for G1Affine {
+impl CurveAffineExt for GrumpkinAffine {
     batch_add!();
 }
 
-const G1_GENERATOR_X: Fq = Fq::one();
-const G1_GENERATOR_Y: Fq = Fq([
+impl BN256 {
+    fn endomorphism_base(&self) -> Self {
+        unimplemented!();
+    }
+}
+
+impl CurveAffineExt for BN256Affine {
+    batch_add!();
+}
+
+const GRUMPKIN_GENERATOR_X: Fq = Fq::one();
+const GRUMPKIN_GENERATOR_Y: Fq = Fq([
     0x11b2dff1448c41d8,
     0x23d3446f21c77dc3,
     0xaa7b8cf435dfafbb,
     0x14b34cf69dc25d68,
 ]);
-const G1_B: Fq = Fq([
+const GRUMPKIN_B: Fq = Fq([
     0xdd7056026000005a,
     0x223fa97acb319311,
     0xcc388229877910c0,
     0x34394632b724eaa,
 ]);
 
-impl group::cofactor::CofactorGroup for G1 {
-    type Subgroup = G1;
+const BN256_GENERATOR_X: Fr = Fr::one();
+const BN256_GENERATOR_Y: Fr = Fr::from_raw([2, 0, 0, 0]);
+const BN256_B: Fr = Fr::from_raw([3, 0, 0, 0]);
+
+impl group::cofactor::CofactorGroup for Grumpkin {
+    type Subgroup = Grumpkin;
+
+    fn clear_cofactor(&self) -> Self {
+        *self
+    }
+
+    fn into_subgroup(self) -> CtOption<Self::Subgroup> {
+        CtOption::new(self, 1.into())
+    }
+
+    fn is_torsion_free(&self) -> Choice {
+        1.into()
+    }
+}
+
+impl group::cofactor::CofactorGroup for BN256 {
+    type Subgroup = BN256;
 
     fn clear_cofactor(&self) -> Self {
         *self
@@ -72,10 +114,11 @@ impl group::cofactor::CofactorGroup for G1 {
 
 #[cfg(test)]
 mod tests {
-    use crate::G1;
+    use crate::{Grumpkin, BN256};
 
     #[test]
     fn test_curve() {
-        crate::tests::curve::curve_tests::<G1>();
+        crate::tests::curve::curve_tests::<Grumpkin>();
+        crate::tests::curve::curve_tests::<BN256>();
     }
 }

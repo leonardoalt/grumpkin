@@ -7,6 +7,7 @@ use super::arithmetic::{adc, mac, sbb};
 use core::convert::TryInto;
 use core::fmt;
 use core::ops::{Add, Mul, Neg, Sub};
+use ff::{FieldBits, PrimeFieldBits};
 use ff::{FromUniformBytes, PrimeField, WithSmallOrderMulGroup};
 use rand::RngCore;
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq, CtOption};
@@ -185,6 +186,10 @@ impl ff::Field for Fq {
     }
 }
 
+impl Fq {
+    pub const MODULUS_F: Fq = MODULUS;
+}
+
 impl ff::PrimeField for Fq {
     type Repr = [u8; 32];
 
@@ -266,6 +271,30 @@ impl FromUniformBytes<64> for Fq {
 
 impl WithSmallOrderMulGroup<3> for Fq {
     const ZETA: Self = ZETA;
+}
+
+type ReprBits = [u64; 4];
+
+impl PrimeFieldBits for Fq {
+    type ReprBits = ReprBits;
+
+    fn to_le_bits(&self) -> FieldBits<Self::ReprBits> {
+        let bytes = self.to_repr();
+
+        #[cfg(target_pointer_width = "64")]
+        let limbs = [
+            u64::from_le_bytes(bytes[0..8].try_into().unwrap()),
+            u64::from_le_bytes(bytes[8..16].try_into().unwrap()),
+            u64::from_le_bytes(bytes[16..24].try_into().unwrap()),
+            u64::from_le_bytes(bytes[24..32].try_into().unwrap()),
+        ];
+
+        FieldBits::new(limbs)
+    }
+
+    fn char_le_bits() -> FieldBits<Self::ReprBits> {
+        FieldBits::new(MODULUS.0)
+    }
 }
 
 #[cfg(test)]

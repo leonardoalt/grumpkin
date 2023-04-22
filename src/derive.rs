@@ -24,8 +24,8 @@ macro_rules! new_curve_impl {
             pub y: $base,
         }
 
-        #[derive(Copy, Clone)]
-        $($privacy)* struct $name_compressed([u8; $base::size()]);
+        #[derive(Copy, Clone, PartialEq, Eq)]
+        $($privacy)* struct $name_compressed(pub [u8; $base::size()]);
 
 
         impl $name {
@@ -184,9 +184,50 @@ macro_rules! new_curve_impl {
                (self.x, self.y, self.z)
             }
 
-
             fn hash_to_curve<'a>(_: &'a str) -> Box<dyn Fn(&[u8]) -> Self + 'a> {
-                unimplemented!();
+                use super::hashtocurve;
+
+                Box::new(move |message| -> Self {
+                    let mut idx = 0;
+                    loop {
+                        let mut us = [$base::ZERO; 2];
+                        hashtocurve::hash_to_field($name::CURVE_ID, idx.to_string().as_str(), message, &mut us);
+                        let hash = us[0];
+
+                        //let y_bit = (hash.0[3] >> 63) & 1;
+                        let mut x_coordinate = hash.clone();
+
+                        if $base::MODULUS_F.0[3] < 0x8000000000000000 {
+                            x_coordinate.0[3] &= !0x8000000000000000;
+                        }
+
+                        let x_out = x_coordinate.clone();
+                        // y^2 = x^3 + b
+                        let y_out_sq = (x_out.square() * x_out + $name::curve_constant_b());
+                        // y = sqrt(x^3 + b)
+                        let y_out = y_out_sq.sqrt();
+
+                        if bool::from(y_out.is_none()) {
+                            idx += 1;
+                            continue;
+                        }
+
+                        let /*mut*/ y_out = y_out.unwrap();
+                        /*
+                        if (y_out.0[0] & 1) != y_bit {
+                            y_out = -y_out;
+                        }
+                        */
+
+                        let pa = $name_affine { x: x_out, y: y_out };
+                        assert!(bool::from(pa.is_on_curve()));
+
+                        let p = pa.to_curve();
+                        assert!(bool::from(p.is_on_curve()));
+
+                        return p;
+                    }
+                })
             }
 
             fn is_on_curve(&self) -> Choice {
