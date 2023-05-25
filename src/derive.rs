@@ -554,7 +554,8 @@ macro_rules! new_curve_impl {
             }
 
             fn coordinates(&self) -> CtOption<Coordinates<Self>> {
-                Coordinates::from_xy( self.x, self.y )
+                let coord = Coordinates::from_xy( self.x, self.y );
+                CtOption::new(coord.unwrap(), !self.is_identity())
             }
 
             fn from_xy(x: Self::Base, y: Self::Base) -> CtOption<Self> {
